@@ -20,15 +20,11 @@
 
 
 
-Install-Module DiagnosticTools -Scope CurrentUser
+Install-Module Diager -Scope CurrentUser
 
 
+(в консоль PowerShell)
 
-Если ругается на неподписанный репозиторий:
-
-
-
-Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 
 
@@ -159,6 +155,8 @@ Get-ServStatus проверяет только 7 служб — какие ещ�
 Telegram: @rightround0
 
 Почта: alsllale@mail.ru
+
+GitHub Issues: https://github.com/mmischab1999-sketch/diager/issues/new
 
 
 
