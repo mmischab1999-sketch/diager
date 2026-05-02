@@ -1,3 +1,5 @@
+$script:diagerBannerShown = $false
+
 $prefix = "Diager >>> "
 
 function Get-DiskStress {
@@ -176,15 +178,118 @@ function gnss {
 
 
 function get-diagerhelp {
-	write-host "$prefix [INFO] AVAILABLE CMDLETS: Get-DiagerHelp , Get-DiskStress , Get-ServStatus ." -f green
+	write-host "$prefix [INFO] AVAILABLE CMDLETS: Get-DiagerHelp , Get-DiskStress , Get-ServStatus, Get-BatteryReport (For laptops only)" -f green
 }
 
 function gdh {
 	get-diagerhelp @args
 }
 
+
+$prefix = "Diager >>> "
+
+
+function get-batteryreport {
+param (
+	[switch]$charge,
+	[switch]$manufacturer,
+	[switch]$wear,
+	[switch]$cycle
+)
+if (-not $charge -and -not $cycle -and -not $manufacturer -and -not $wear) {
+	$charge = $true
+	$cycle = $true
+	$manufacturer = $true
+	$wear = $true
+}
+
+	write-host "$prefix" -nonewline
+	write-host "[GETTING]:" -f cyan -nonewline
+	write-host "Battery information..."
+	$battery = gcim win32_battery
+	if ($battery -eq $null) {
+		write-host "$prefix" -nonewline
+		write-host "[COULDN`T]" -f red -nonewline
+		write-host ":Get any battery information. Suggest you're using PC?" 
+	} else {
+		write-host "$prefix" -nonewline
+		write-host "[GOT]:" -f green -nonewline
+		write-host "Battery information" 
+		
+		if($manufacturer){
+		$manufacturerF = $battery.manufacturer
+		write-host "$prefix" -nonewline
+		write-host "[INFO]:" -f cyan -nonewline
+		write-host "Manufacturer: $manufacturerF"
+		}
+		
+		if($charge){
+		$currentCharge = $battery.EstimatedChargeRemaining
+		$batteryStatus = $battery.BatteryStatus
+		if ($batteryStatus -eq 1) {
+			$batteryStatus = "On battery"
+		} else {
+			$batteryStatus = "On charge" 
+		}
+			if ($currentCharge -gt 20) {
+				write-host "$prefix" -nonewline
+				write-host "[WARNING]:" -f yellow -nonewline
+				write-host "Charge ($batteryStatus): $currentCharge, Charge up!"
+			} else {
+				write-host "$prefix" -nonewline
+				write-host "[OK]:" -f green -nonewline
+				write-host "Charge ($batteryStatus): $currentCharge"
+			}
+		}
+
 		
 
+		if($wear){
+		$wearF = 100 - [math]::Round(($battery.FullChargeCapacity / $battery.DesignCapacity) * 100, 1)
+		if ($wearF -ge 35 -and $wearF -lt 80){
+			write-host "$prefix" -nonewline
+			write-host "[WARNING]" -f yellow -nonewline
+			write-host ":Battery wear: $wearF - consider replacing soon."
+		}
+		elseif ($wearF -ge 80){
+			write-host "$prefix" -nonewline
+			write-host "[CRITICAL]" -f red -nonewline
+			write-host ":Battery wear: $wearF - replace it!"
+		} else {
+			write-host "$prefix" -nonewline
+			write-host "[OK]" -f green -nonewline
+			write-host ":Battery wear: $wearF"
+			}
+		}
+	
+
+		if($cycle) {
+		$cycleF = $battery.cyclecount
+			write-host "$prefix" -nonewline
+			write-host "[INFO]" -f cyan -nonewline
+			write-host "Interesting: you charged your laptop $cycleF times."
+		}
+	}
+}
 		
+function gbr {
+	get-batteryreport @args
+}
 
 
+Export-ModuleMember -Function Get-DiskStress, Get-BatteryReport, Get-ServStatus, Get-DiagerHelp, gds, gbr, gnss, gdh
+
+$moduleVersion = (Test-ModuleManifest $PSScriptRoot\diager.psd1).Version
+		
+if (-not $script:diagerBannerShown) {
+	#=======ИМПОРТ ВЕЛКОМ МЕССЕДЖ============	
+write-host "╔═════════════════════════════════════════╗" -f cyan
+write-host "║  DIAGER v$moduleVersion-alpha Diagnostics Module   ║" -f cyan
+write-host "╚═════════════════════════════════════════╝" -f cyan
+write-host "Diager >>> Welcome! Type" -nonewline
+write-host " Get-DiagerHelp" -f yellow -nonewline
+write-host " or" -nonewline
+write-host " gdh" -f yellow -nonewline
+write-host " to see available cmdlets."
+$script:diagerBannerShown = $true
+}
