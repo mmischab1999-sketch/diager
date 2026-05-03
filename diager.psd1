@@ -12,7 +12,7 @@
 RootModule = 'diager.psm1'
 
 # Номер версии данного модуля.
-ModuleVersion = '1.0.5'
+ModuleVersion = '1.1.0'
 
 # Поддерживаемые выпуски PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Functions that help you diagnose your PC and get clear output'
 # NestedModules = @()
 
 # В целях обеспечения оптимальной производительности функции для экспорта из этого модуля не используют подстановочные знаки и не удаляют запись. Используйте пустой массив, если нет функций для экспорта.
-FunctionsToExport = @('Get-DiskStress', 'gds', 'Get-DiagerHelp', 'gdh', 'Get-ServStatus', 'gnss', 'Get-BatteryReport', 'gbr', 'Get-LagProblem', 'glp', 'Get-Lag')
+FunctionsToExport = @('Get-DiskStress', 'gds', 'Get-DiagerHelp', 'gdh', 'Get-ServStatus', 'gnss', 'Get-LagProblem', 'glp', 'Get-Lag')
 
 # В целях обеспечения оптимальной производительности командлеты для экспорта из этого модуля не используют подстановочные знаки и не удаляют запись. Используйте пустой массив, если нет командлетов для экспорта.
 CmdletsToExport = '*'

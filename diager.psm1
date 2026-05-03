@@ -1,117 +1,118 @@
-
+function Write-Diager {
+    param(
+        [string]$Tag,          # тэг
+        [string]$Message,      # текст
+        [string]$Color = "White",  # цвет тега
+        [string]$MsgColor = "White", # цвет сообщения необязательно
+        [switch]$NoNewline
+    )
+    Write-Host "$prefix " -NoNewline
+    Write-Host "[$Tag]:" -ForegroundColor $Color -NoNewline
+    if ($MsgColor -ne "White") {
+        Write-Host " $Message" -ForegroundColor $MsgColor -NoNewline:$NoNewline
+    } else {
+        Write-Host " $Message" -NoNewline:$NoNewline
+    }
+}
 
 $prefix = "Diager >>> "
 
-function Get-DiskStress {
-	
-	param(
-		[switch]$health,
-		[switch]$defrag,
-		[switch]$free
-	)
-
-	#переменные
-	$Drives = Get-PSDrive -PSProvider FileSystem | ? Free -ne $null
-	$Volumes = Get-Volume | ? DriveLetter -ne $null
-	$partitions = Get-Partition | Where-Object DriveLetter
-
-if (-not $health -and -not $defrag -and -not $free) {
-    # show all
-    $free = $true
-    $health = $true
-    $defrag = $true
-}
-	
-	
-if ($free) {
-	write-host "$prefix" -nonewline
-	write-host " [GETTING]:" -f cyan -nonewline
-	write-host "Your disks free space..."
-start-sleep -seconds 1
-	#если инфа о дисках получена 
-	if ($drives -ne $null) {
-		write-host "$prefix" -nonewline
-		write-host " [GOT]:" -f green -nonewline
-		write-host "Your disks free space" 
-		$Drives | % {
-        		if ($_.Free -gt 5GB) {
-				$currentGB = [math]::Round($_.free / 1GB, 2)
-        			write-host "$prefix" -nonewline
-				write-host " [OK]:" -f green -nonewline
-				write-host "$_ free space is normal. It`s $currentGB GB"
-       			 } else {
-				write-host "$prefix" -nonewline
-				write-host " [WARNING]:" -f yellow -nonewline
-				write-host "Less than 5GB free space on $_ disk! Use utilits to clean or delete files you don`t need"
-			}
-		}
-	#если инфа о дисках не получена
-	} else {
-		write-host "$prefix" -nonewline
-		write-host " [COULDN`T]:" -f red -nonewline
-		write-host "Get your disks free space"
-	}
-	} #закрыл парам
-	
-
-
-	if ($health) {
-	write-host "$prefix" -nonewline
-	write-host " [GETTING]:" -f cyan -nonewline 
-	write-host "Your disks health status..."
-start-sleep -seconds 1
-	if ($Volumes.DriveLetter -ne $null) {
-		write-host "$prefix" -nonewline
-		write-host " [GOT]:" -f green -nonewline
-		write-host "Your disks health status"
-		$Volumes | % {
-			if ($_.HealthStatus -eq "Healthy") {
-				write-host "$prefix" -nonewline
-				write-host " [OK]:" -f green -nonewline
-				write-host "$($_.DriveLetter) health is in order" 
-			} else {
-				write-host "$prefix" -nonewline
-				write-host " [WARNING]:" -f yellow -nonewline 
-				write-host "$($_.DriveLetter) health isnt in order! Use utilits or contact a specialist.P.S. $($_.OperationalStatus)"
-			}
-		}
-	} else {
-		write-host "$prefix" -nonewline
-		write-host " [COULDN`T]:" -f red -nonewline
-		write-host "Get your disks health status"
-	}
-} #закрыл парам
-
-if ($defrag) {
-	write-host "$prefix" -nonewline
-	write-host " [GETTING]:" -f cyan -nonewline 
-	write-host "Defragmentation analysis..."
-    start-sleep -seconds 1
-    
-	if ($partitions -ne $null) {
-		$partitions | ForEach-Object {
-    		$physicalDisk = Get-PhysicalDisk -DeviceNumber $_.DiskNumber
-    
-   			if ($physicalDisk.MediaType -eq "SSD") {
-        		Write-Host "$prefix" -nonewline
-				write-host " [OK]:" -f green -nonewline
-				write-host "Drive $($_.DriveLetter): (SSD) — defragmentation not needed and might be harmful."
-    		} else {
-        		Write-Host "$prefix" -nonewline
-				write-host " [INFO]:" -f cyan -nonewline 
-				write-host "Drive $($_.DriveLetter): (HDD) — if system feels slow, run:" -nonewline
-				write-host " Optimize-Volume -DriveLetter $($_.DriveLetter) -Defrag" -f yellow
-            }
+function get-diskstress {
+    param (
+        [switch]$free,
+        [switch]$health,
+        [switch]$defrag,
+        [switch]$asobject
+    )
+    if (-not $free -and -not $health -and -not $defrag) {
+        $free = $true
+        $health = $true
+        $defrag = $true
+    }
+    $result =@{}
+    if ($free){
+        $freeResult = @()
+        if(-not $asobject){
+            write-diager "GETTING" "Your disks free space..." -color cyan }
+        try {
+            $Drives = Get-PSDrive -PSProvider FileSystem | ? Free -ne $null -erroraction stop
+            if(-not $asobject){
+                write-diager "GOT" "Your disks free space" -color green }
+            $Drives | % {
+                $currentGB = [math]::Round($_.free / 1GB, 2)
+                if ($_.free -gt 5GB) {
+                    $status = "OK"
+                    if(-not $asobject) {
+                        write-diager "$status" "$_ free space is normal. Its $currentGB GB" -color green }
+                } else {
+                    $status = "WARNING"
+                    if (-not $asobject) {
+                        write-diager "$status" "$_ free space is less than 5GB. Its only $currentGB GB" -color yellow }
+                }
+                $FreeObject = [PSCustomObject]@{ Drive = $_.Name; FreeGB = $currentGB; Status = $status }
+                $freeResult += $FreeObject
+                $result.Free = $freeResult
+            }  
+        } catch {
+            write-diager "COULDNT" "Get your disks free space" -color red
         }
-        write-host "$prefix" -nonewline
-        write-host " [GOT]:" -f green -nonewline 
-        write-host "Fragmentation information. Analysed"
-	} else {
-		write-host "$prefix" -nonewline
-		write-host " [COULDN`T]:" -f red -nonewline
-		write-host "Get fragmentation status" 
-	}
-}
+    }
+    if ($health){
+        $healthResult = @()
+        if(-not $asobject){
+            write-diager "GETTING" "Your disks health status..." -color cyan }
+        try {
+            $Volumes = Get-Volume | ? DriveLetter -ne $null -ErrorAction Stop
+            if(-not $asobject){
+                write-diager "GOT" "Your disks health status" -color green }
+            $volumes | % {
+                if ($_.HealthStatus -eq "healthy") {
+                    if(-not $asobject){
+                        write-diager "OK" "$($_.DriveLetter) health is in order" -color green }
+                } else {
+                    if(-not $asobject){  
+                        write-diager "WARNING" "$($_.driveletter) health is not in order" -color yellow }
+                }
+                $healthObject = [PSCustomObject]@{ DriveLetter = $_.driveletter; HealthStatus = $_.HealthStatus}
+                $healthResult += $healthObject
+                $result.Health = $healthResult
+            }
+        } catch {
+            write-diager "COULDNT" "Get your disks free status"
+        }
+    }
+    if ($defrag) {
+        $defragResult = @()
+        if (-not $asobject) {
+            write-diager "GETTING" "Defragmentation analysis..." -color cyan }
+        try {
+            $partitions = Get-Partition | Where-Object DriveLetter -erroraction stop
+            $partitions | % {
+                $physicalDisk = Get-PhysicalDisk -DeviceNumber $_.DiskNumber -erroraction stop
+                if ($physicalDisk.MediaType -eq "SSD") {
+                    $type = "SSD"
+                    if(-not $asobject){
+                        write-diager "OK" "Drive $($_.driveletter) ($type) - defragmentation not needed (And might be harmful)" -color green }
+                } else {
+                    $type = "HDD"
+                    if(-not $asobject){
+                        write-diager "INFO" "Drive $($_.DriveLetter)($type) - can be defragmentated." -color cyan
+                        write-host "$prefix Run " -nonewline 
+                        write-host "Optimize-Volume -DriveLetter $($_.DriveLetter) -Defrag" -f yellow -NoNewline
+                        write-host " for it." }
+                }
+                if ($type -eq "SSD") { $canbedefraged = $false} else { $canbedefraged = $true}
+                $defragObject = [PSCustomObject]@{ DriveLetter = $_.driveletter; MediaType = $type; CanBeDefraged = $canbedefraged}
+                $defragResult += $defragObject
+                $result.Defrag = $defragResult
+            }
+        } catch {
+            write-diager "COULDNT" "Get defragmentation analysis"
+        }
+    }
+    if ($asobject) {
+        return [PSCustomObject]$result
+    }
 }
 
 			
@@ -179,7 +180,7 @@ function gnss {
 
 
 function get-diagerhelp {
-	write-host "$prefix [INFO]: AVAILABLE CMDLETS: Get-DiagerHelp , Get-DiskStress , Get-ServStatus, Get-BatteryReport (For laptops only), Get-LagProblem." -f green
+	write-host "$prefix [INFO]: AVAILABLE CMDLETS: Get-DiagerHelp , Get-DiskStress , Get-ServStatus, Get-LagProblem." -f green
 	write-host "$prefix [INFO]: Links:" -f green
 	write-host "$prefix [INFO]: PSGallery: https://www.powershellgallery.com/packages/diager/1.0" -f green
 	write-host "$prefix [INFO]: GitHub: https://github.com/mmischab1999-sketch/diager " -f green
@@ -280,31 +281,6 @@ function gbr {
 
 
 
-		
-
-
-
-
-
-function Write-Diager {
-    param(
-        [string]$Tag,          # тэг
-        [string]$Message,      # текст
-        [string]$Color = "White",  # цвет тега
-        [string]$MsgColor = "White", # цвет сообщения необязательно
-        [switch]$NoNewline
-    )
-    Write-Host "$prefix " -NoNewline
-    Write-Host "[$Tag]:" -ForegroundColor $Color -NoNewline
-    if ($MsgColor -ne "White") {
-        Write-Host " $Message" -ForegroundColor $MsgColor -NoNewline:$NoNewline
-    } else {
-        Write-Host " $Message" -NoNewline:$NoNewline
-    }
-}
-
-
-
 function Get-Lagproblem {
 	param (
 		[switch]$cpu,
@@ -384,4 +360,4 @@ function glp {
 }
 
 
-Export-ModuleMember -Function Get-DiskStress, Get-BatteryReport, Get-ServStatus, Get-DiagerHelp, gds, gbr, gnss, gdh, get-lagproblem, get-lag, glp
+Export-ModuleMember -Function Get-DiskStress, Get-ServStatus, Get-DiagerHelp, gds, gnss, gdh, get-lagproblem, get-lag, glp
